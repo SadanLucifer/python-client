@@ -12,22 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
+import pytest
 from appium.webdriver.common.multi_action import MultiAction
 from appium.webdriver.common.touch_action import TouchAction
 
 
-class MultiActionTests(unittest.TestCase):
-    def setUp(self):
-        self._multi_action = MultiAction(DriverStub())
+class TestMultiAction(object):
+    @pytest.fixture
+    def multi_action(self):
+        return MultiAction(DriverStub())
 
-    def test_json(self):
-        self.maxDiff = None
+    def test_json(self, multi_action):
         json = {
             'actions': [
                 [
-                    {'action': 'press', 'options': {'x': None, 'y': None, 'element': 1}},
+                    {'action': 'press', 'options': {'element': 1}},
                     {'action': 'moveTo', 'options': {'x': 10, 'y': 20}},
                     {'action': 'release', 'options': {}}
                 ],
@@ -36,28 +35,23 @@ class MultiActionTests(unittest.TestCase):
                     {'action': 'moveTo', 'options': {'x': 12, 'y': -300}},
                     {'action': 'release', 'options': {}}
                 ]
-            ],
-            'elementId': 0
+            ]
         }
         t1 = TouchAction(DriverStub()).press(ElementStub(1)).move_to(x=10, y=20).release()
         t2 = TouchAction(DriverStub()).press(ElementStub(5), 11, 30).move_to(x=12, y=-300).release()
-        self._multi_action.add(t1, t2)
-        self.assertEqual(json, self._multi_action.json_wire_gestures)
+        multi_action.add(t1, t2)
+        assert json == multi_action.json_wire_gestures
 
 
 class DriverStub(object):
-    def execute(self, action, params):
-        print "driver.execute called"
+    def execute(self, _action, _params):
+        print("driver.execute called")
 
 
 class ElementStub(object):
-    def __init__(self, id):
-        self._id = id
+    def __init__(self, e_id):
+        self._id = e_id
 
     @property
     def id(self):
         return self._id
-
-
-if __name__ == "__main__":
-    unittest.main()

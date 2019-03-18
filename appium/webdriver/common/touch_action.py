@@ -21,6 +21,8 @@
 #
 # Theirs is `TouchActions`. Appium's is `TouchAction`.
 
+# pylint: disable=no-self-use
+
 import copy
 
 from appium.webdriver.mobilecommand import MobileCommand as Command
@@ -47,10 +49,17 @@ class TouchAction(object):
 
         return self
 
-    def press(self, el=None, x=None, y=None):
+    def press(self, el=None, x=None, y=None, pressure=None):
         """Begin a chain with a press down action at a particular element or point
+
+        :Args:
+        - el - (optional) the element to press
+        - x - (optional) x coordiate to press. If y is used, x must also be set
+        - y - (optional) y coordiate to press. If x is used, y must also be set
+        - pressure - (optional) [iOS Only] press as force touch. Read the description of `force` property on Apple's UITouch class
+                                (https://developer.apple.com/documentation/uikit/uitouch?language=objc) for more details on possible value ranges.
         """
-        self._add_action('press', self._get_opts(el, x, y))
+        self._add_action('press', self._get_opts(el, x, y, pressure=pressure))
 
         return self
 
@@ -112,19 +121,20 @@ class TouchAction(object):
         }
         self._actions.append(gesture)
 
-    def _get_opts(self, element, x, y, duration = None):
+    def _get_opts(self, element, x, y, duration=None, pressure=None):
         opts = {}
         if element is not None:
             opts['element'] = element.id
 
         # it makes no sense to have x but no y, or vice versa.
-        if x is None or y is None:
-            x, y = None, None
-        opts['x'] = x
-        opts['y'] = y
+        if x is not None and y is not None:
+            opts['x'] = x
+            opts['y'] = y
 
         if duration is not None:
             opts['duration'] = duration
 
-        return opts
+        if pressure is not None:
+            opts['pressure'] = pressure
 
+        return opts

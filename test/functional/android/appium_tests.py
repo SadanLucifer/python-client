@@ -21,7 +21,9 @@ import random
 from time import sleep
 from dateutil.parser import parse
 
+from appium.webdriver.applicationstate import ApplicationState
 from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.by import By
 
 from appium import webdriver
 import desired_capabilities
@@ -42,6 +44,31 @@ class AppiumTests(unittest.TestCase):
         # remove zipped file from `test_pull_folder`
         if hasattr(self, 'zipfilename') and os.path.isfile(self.zipfilename):
             os.remove(self.zipfilename)
+
+    def test_screen_record(self):
+        self.driver.start_recording_screen(timeLimit=10, forcedRestart=True)
+        sleep(5)
+        result = self.driver.stop_recording_screen()
+        self.assertTrue(len(result) > 0)
+
+    def test_app_management(self):
+        app_id = self.driver.current_package
+        self.assertEqual(self.driver.query_app_state(app_id),
+                         ApplicationState.RUNNING_IN_FOREGROUND)
+        self.driver.background_app(-1)
+        self.assertTrue(self.driver.query_app_state(app_id) <
+                        ApplicationState.RUNNING_IN_FOREGROUND)
+        self.driver.activate_app(app_id)
+        self.assertEqual(self.driver.query_app_state(app_id),
+                         ApplicationState.RUNNING_IN_FOREGROUND)
+
+    def test_lock(self):
+        self.driver.lock(-1)
+        try:
+            self.assertTrue(self.driver.is_locked())
+        finally:
+            self.driver.unlock()
+        self.assertFalse(self.driver.is_locked())
 
     def test_app_strings(self):
         strings = self.driver.app_strings()
@@ -104,9 +131,8 @@ class AppiumTests(unittest.TestCase):
 
     def test_background_app(self):
         self.driver.background_app(1)
-        sleep(5)
-        el = self.driver.find_element_by_name('Animation')
-        self.assertIsNotNone(el)
+        sleep(3)
+        self.driver.launch_app()
 
     def test_is_app_installed(self):
         self.assertFalse(self.driver.is_app_installed('sdfsdf'))
@@ -124,14 +150,10 @@ class AppiumTests(unittest.TestCase):
         self.assertFalse(self.driver.is_app_installed('com.example.android.apis'))
 
     def test_close__and_launch_app(self):
-        el = self.driver.find_element_by_name('Animation')
-        self.assertIsNotNone(el)
-
         self.driver.close_app()
         self.driver.launch_app()
-
-        el = self.driver.find_element_by_name('Animation')
-        self.assertIsNotNone(el)
+        activity = self.driver.current_activity
+        self.assertEqual('.ApiDemos', activity)
 
     def test_end_test_coverage(self):
         self.skipTest('Not sure how to set this up to run')
@@ -139,14 +161,8 @@ class AppiumTests(unittest.TestCase):
         sleep(5)
 
     def test_reset(self):
-        el = self.driver.find_element_by_name('App')
-        el.click()
-
         self.driver.reset()
-        sleep(5)
-
-        el = self.driver.find_element_by_name('App')
-        self.assertIsNotNone(el)
+        self.assertTrue(self.driver.is_app_installed('com.example.android.apis'))
 
     def test_open_notifications(self):
         self.driver.find_element_by_android_uiautomator('new UiSelector().text("App")').click()
@@ -157,8 +173,8 @@ class AppiumTests(unittest.TestCase):
 
         self.driver.open_notifications()
         sleep(1)
-        self.assertRaises(NoSuchElementException, \
-            self.driver.find_element_by_android_uiautomator, 'new UiSelector().text(":-|")')
+        self.assertRaises(NoSuchElementException,
+                          self.driver.find_element_by_android_uiautomator, 'new UiSelector().text(":-|")')
 
         els = self.driver.find_elements_by_class_name('android.widget.TextView')
         # sometimes numbers shift
@@ -178,7 +194,8 @@ class AppiumTests(unittest.TestCase):
         self.driver.find_element_by_android_uiautomator('new UiSelector().text(":-|")')
 
     def test_set_text(self):
-        self.driver.find_element_by_android_uiautomator('new UiScrollable(new UiSelector().scrollable(true).instance(0)).scrollIntoView(new UiSelector().text("Views").instance(0));').click()
+        self.driver.find_element_by_android_uiautomator(
+            'new UiScrollable(new UiSelector().scrollable(true).instance(0)).scrollIntoView(new UiSelector().text("Views").instance(0));').click()
         self.driver.find_element_by_name('Controls').click()
         self.driver.find_element_by_name('1. Light Theme').click()
 
@@ -189,15 +206,14 @@ class AppiumTests(unittest.TestCase):
         self.assertEqual('new text', el.text)
 
     def test_send_keys(self):
-        self.driver.find_element_by_android_uiautomator('new UiScrollable(new UiSelector().scrollable(true).instance(0)).scrollIntoView(new UiSelector().text("Views").instance(0));').click()
-        self.driver.find_element_by_name('Controls').click()
-        self.driver.find_element_by_name('1. Light Theme').click()
+        self.driver.find_element_by_xpath("//android.widget.TextView[@text='App']").click()
+        self.driver.find_element_by_xpath("//android.widget.TextView[@text='Activity']").click()
+        self.driver.find_element_by_xpath("//android.widget.TextView[@text='Custom Title']").click()
 
-        el = self.driver.find_element_by_class_name('android.widget.EditText')
-        el.send_keys('original text')
-        el.send_keys(' and new text')
+        el = self.driver.find_element(By.ID, 'com.example.android.apis:id/left_text_edit')
+        el.send_keys(' text')
 
-        self.assertEqual('original text and new text', el.text)
+        self.assertEqual('Left is best text', el.text)
 
     def test_start_activity_this_app(self):
         self.driver.start_activity("com.example.android.apis", ".ApiDemos")

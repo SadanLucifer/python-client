@@ -14,19 +14,60 @@
 import os
 
 # Returns abs path relative to this file and not cwd
-PATH = lambda p: os.path.abspath(
+
+
+def PATH(p): return os.path.abspath(
     os.path.join(os.path.dirname(__file__), p)
 )
 
 
+BUNDLE_ID = 'com.example.apple-samplecode.UICatalog'
+
+
 def get_desired_capabilities(app):
     desired_caps = {
-        'deviceName': 'iPhone 6s',
+        'deviceName': iphone_device_name(),
         'platformName': 'iOS',
-        'platformVersion': '10.3',
+        'platformVersion': '12.1',
         'app': PATH('../../apps/' + app),
         'automationName': 'XCUITest',
-        'allowTouchIdEnroll': True
+        'allowTouchIdEnroll': True,
+        'wdaLocalPort': wda_port(),
     }
 
     return desired_caps
+
+
+class PytestXdistWorker(object):
+    NUMBER = os.getenv('PYTEST_XDIST_WORKER')
+    COUNT = os.getenv('PYTEST_XDIST_WORKER_COUNT')  # Return 2 if `-n 2` is passed
+
+    @staticmethod
+    def gw(number):
+        if PytestXdistWorker.COUNT is None:
+            return '0'
+
+        if number >= PytestXdistWorker.COUNT:
+            return 'gw0'
+
+        return 'gw{}'.format(number)
+
+# If you run tests with pytest-xdist, you can run tests in parallel.
+
+
+def wda_port():
+    if PytestXdistWorker.NUMBER == PytestXdistWorker.gw(1):
+        return 8101
+
+    return 8100
+
+# Before running tests, you must have iOS simulators named 'iPhone 6s - 8100' and 'iPhone 6s - 8101'
+
+
+def iphone_device_name():
+    if PytestXdistWorker.NUMBER == PytestXdistWorker.gw(0):
+        return 'iPhone 8 - 8100'
+    elif PytestXdistWorker.NUMBER == PytestXdistWorker.gw(1):
+        return 'iPhone 8 - 8101'
+
+    return 'iPhone 8'

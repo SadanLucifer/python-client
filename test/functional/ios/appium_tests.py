@@ -15,8 +15,7 @@
 import unittest
 from time import sleep
 
-from selenium.common.exceptions import NoSuchElementException
-
+from appium.webdriver.applicationstate import ApplicationState
 from appium import webdriver
 import desired_capabilities
 
@@ -30,15 +29,32 @@ class AppiumTests(unittest.TestCase):
         self.driver.quit()
 
     def test_lock(self):
-        el = self.driver.find_element_by_id('ButtonsExplain')
-        self.assertIsNotNone(el)
-        self.driver.lock(0)
-        self.assertRaises(NoSuchElementException, self.driver.find_element_by_id, 'ButtonsExplain')
-        sleep(10)
+        self.driver.lock(-1)
+        try:
+            self.assertTrue(self.driver.is_locked())
+        finally:
+            self.driver.unlock()
+        self.assertFalse(self.driver.is_locked())
 
-        # # this does not seem to ever unlock, so the assertion fails
-        # el = self.driver.find_element_by_id('ButtonsExplain')
-        # self.assertIsNotNone(el)
+    def test_screen_record(self):
+        self.driver.start_recording_screen()
+        sleep(5)
+        result = self.driver.stop_recording_screen()
+        self.assertTrue(len(result) > 0)
+
+    def test_app_management(self):
+        # this only works in Xcode9+
+        if float(desired_capabilities.get_desired_capabilities(
+                desired_capabilities.BUNDLE_ID)['platformVersion']) < 11:
+            return
+        self.assertEqual(self.driver.query_app_state(desired_capabilities.BUNDLE_ID),
+                         ApplicationState.RUNNING_IN_FOREGROUND)
+        self.driver.background_app(-1)
+        self.assertTrue(self.driver.query_app_state(desired_capabilities.BUNDLE_ID) <
+                        ApplicationState.RUNNING_IN_FOREGROUND)
+        self.driver.activate_app(desired_capabilities.BUNDLE_ID)
+        self.assertEqual(self.driver.query_app_state(desired_capabilities.BUNDLE_ID),
+                         ApplicationState.RUNNING_IN_FOREGROUND)
 
     def test_shake(self):
         # what can we assert about this?
@@ -54,7 +70,7 @@ class AppiumTests(unittest.TestCase):
         self.driver.toggle_touch_id_enrollment()
 
     def test_hide_keyboard(self):
-        el = self.driver.find_element_by_name('TextFields, Uses of UITextField')
+        el = self.driver.find_element_by_name('Uses of UITextField')
         el.click()
 
         # get focus on text field, so keyboard comes up
@@ -69,7 +85,7 @@ class AppiumTests(unittest.TestCase):
         self.assertFalse(el.is_displayed())
 
     def test_hide_keyboard_presskey_strategy(self):
-        el = self.driver.find_element_by_name('TextFields, Uses of UITextField')
+        el = self.driver.find_element_by_name('Uses of UITextField')
         el.click()
 
         # get focus on text field, so keyboard comes up
@@ -84,7 +100,7 @@ class AppiumTests(unittest.TestCase):
         self.assertFalse(el.is_displayed())
 
     def test_hide_keyboard_no_key_name(self):
-        el = self.driver.find_element_by_name('TextFields, Uses of UITextField')
+        el = self.driver.find_element_by_name('Uses of UITextField')
         el.click()
 
         # get focus on text field, so keyboard comes up
@@ -99,6 +115,16 @@ class AppiumTests(unittest.TestCase):
 
         # currently fails.
         self.assertFalse(el.is_displayed())
+
+    def test_is_keyboard_shown(self):
+        self.assertFalse(self.driver.is_keyboard_shown())
+        el = self.driver.find_element_by_name('Uses of UITextField')
+        el.click()
+
+        # get focus on text field, so keyboard comes up
+        el = self.driver.find_element_by_class_name('UIATextField')
+        el.set_value('Testing')
+        self.assertTrue(self.driver.is_keyboard_shown())
 
     def test_clear(self):
         # Click text fields
@@ -119,6 +145,14 @@ class AppiumTests(unittest.TestCase):
         self.driver.find_element_by_accessibility_id('Normal').clear()
         text = self.driver.find_element_by_accessibility_id('Normal').get_attribute('value')
         self.assertEqual(text, def_text)
+
+    def test_press_button(self):
+        self.driver.press_button("Home")
+        if float(desired_capabilities.get_desired_capabilities(
+                desired_capabilities.BUNDLE_ID)['platformVersion']) < 11:
+            return
+        self.assertEqual(self.driver.query_app_state(desired_capabilities.BUNDLE_ID),
+                         ApplicationState.RUNNING_IN_FOREGROUND)
 
 
 if __name__ == "__main__":

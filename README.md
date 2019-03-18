@@ -1,7 +1,9 @@
 Appium Python Client
 ====================
 
-An extension library for adding [Selenium 3.0 draft](https://dvcs.w3.org/hg/webdriver/raw-file/tip/webdriver-spec.html) and [Mobile JSON Wire Protocol Specification draft](https://code.google.com/p/selenium/source/browse/spec-draft.md?repo=mobile)
+[![PyPI version](https://badge.fury.io/py/Appium-Python-Client.svg)](https://badge.fury.io/py/Appium-Python-Client)
+
+An extension library for adding [Selenium 3.0 draft](https://dvcs.w3.org/hg/webdriver/raw-file/tip/webdriver-spec.html) and [Mobile JSON Wire Protocol Specification draft](https://github.com/SeleniumHQ/mobile-spec/blob/master/spec-draft.md)
 functionality to the Python language bindings, for use with the mobile testing
 framework [Appium](https://appium.io).
 
@@ -9,14 +11,16 @@ framework [Appium](https://appium.io).
 
 There are three ways to install and use the Appium Python client.
 
-1. Install from [PyPi](https://pypi.python.org/pypi), as
-['Appium-Python-Client'](https://pypi.python.org/pypi/Appium-Python-Client).
+1. Install from [PyPi](https://pypi.org), as
+['Appium-Python-Client'](https://pypi.org/project/Appium-Python-Client/).
 
     ```shell
     pip install Appium-Python-Client
     ```
 
-2. Install from source, via [PyPi](https://pypi.python.org/pypi). From ['Appium-Python-Client'](https://pypi.python.org/pypi/Appium-Python-Client),
+    You can see the history from [here](https://pypi.org/project/Appium-Python-Client/#history)
+
+2. Install from source, via [PyPi](https://pypi.org). From ['Appium-Python-Client'](https://pypi.org/project/Appium-Python-Client/),
 download and unarchive the source tarball (Appium-Python-Client-X.X.tar.gz).
 
     ```shell
@@ -33,13 +37,77 @@ download and unarchive the source tarball (Appium-Python-Client-X.X.tar.gz).
     python setup.py install
     ```
 
+# Development
+
+- Style Guide: https://www.python.org/dev/peps/pep-0008/
+    - `autopep8` helps to format code automatically
+        ```
+        $ python -m autopep8 -r --global-config .config-pep8 -i .
+        ```
+- You can customise `CHANGELOG.rst` with commit messages following [.gitchangelog.rc](.gitchangelog.rc)
+    - It generates readable changelog
+- Setup
+    - `pip install -r development.txt`
+    - `pre-commit install`
+
+## Run tests
+
+You can run all of tests running on CI via `tox` in your local.
+
+```
+$ tox
+```
+
+You also can run particular tests like below.
+
+### Unit
+
+```
+$ py.test test/unit
+```
+
+Run with `pytest-xdist`
+
+```
+$ py.test -n 2 test/unit
+```
+
+### Functional
+
+```
+$ py.test test/functional/ios/find_by_ios_class_chain_tests.py
+```
+
+### In parallel for iOS
+1. Create simulators named 'iPhone 6s - 8100' and 'iPhone 6s - 8101'
+2. Install test libraries via pip
+    ```
+    $ pip install pytest pytest-xdist
+    ```
+3. Run tests
+    ```
+    $ py.test -n 2 test/functional/ios/find_by_ios_class_chain_tests.py
+    ```
+
+# Release
+
+Follow below steps.
+
+```bash
+$ pip install twine
+$ pip install git+git://github.com/vaab/gitchangelog.git # Getting via GitHub repository is necessary for Python 3.7
+# Type the new version number and 'yes' if you can publish it
+# You can test the command with DRY_RUN
+$ DRY_RUN=1 ./release.sh
+$ ./release.sh # release
+```
 
 # Usage
 
 The Appium Python Client is fully compliant with the Selenium 3.0 specification
 draft, with some helpers to make mobile testing in Python easier. The majority of
 the usage remains as it has been for Selenium 2 (WebDriver), and as the [official
-Selenium Python bindings](https://pypi.python.org/pypi/selenium) begins to
+Selenium Python bindings](https://pypi.org/project/selenium/) begins to
 implement the new specification that implementation will be used underneath, so
 test code can be written that is utilizable with both bindings.
 
@@ -63,7 +131,8 @@ from appium import webdriver
 
 desired_caps = {}
 desired_caps['platformName'] = 'Android'
-desired_caps['platformVersion'] = '4.2'
+desired_caps['platformVersion'] = '8.1'
+desired_caps['automationName'] = 'uiautomator2'
 desired_caps['deviceName'] = 'Android Emulator'
 desired_caps['app'] = PATH('../../../apps/selendroid-test-app.apk')
 
@@ -77,22 +146,47 @@ from appium import webdriver
 
 desired_caps = {}
 desired_caps['platformName'] = 'iOS'
-desired_caps['platformVersion'] = '7.1'
+desired_caps['platformVersion'] = '11.4'
+desired_caps['automationName'] = 'xcuitest'
 desired_caps['deviceName'] = 'iPhone Simulator'
 desired_caps['app'] = PATH('../../apps/UICatalog.app.zip')
 
 self.driver = webdriver.Remote('http://localhost:4723/wd/hub', desired_caps)
 ```
 
-
 ## Changed or added functionality
 
 The methods that do change are...
 
+### Direct Connect URLs
+
+If your Selenium/Appium server decorates the new session capabilities response with the following keys:
+
+- `directConnectProtocol`
+- `directConnectHost`
+- `directConnectPort`
+- `directConnectPath`
+
+Then python client will switch its endpoint to the one specified by the values of those keys.
+
+```python
+import unittest
+from appium import webdriver
+
+desired_caps = {}
+desired_caps['platformName'] = 'iOS'
+desired_caps['platformVersion'] = '11.4'
+desired_caps['automationName'] = 'xcuitest'
+desired_caps['deviceName'] = 'iPhone Simulator'
+desired_caps['app'] = PATH('../../apps/UICatalog.app.zip')
+
+self.driver = webdriver.Remote('http://localhost:4723/wd/hub', desired_caps, direct_connection=True)
+```
+
 
 ### Switching between 'Native' and 'Webview'
 
-For mobile testing the Selnium methods for switching between windows was previously
+For mobile testing the Selenium methods for switching between windows was previously
 commandeered for switching between native applications and webview contexts. Methods
 explicitly for this have been added to the Selenium 3 specification, so moving
 forward these 'context' methods are to be used.
@@ -155,6 +249,22 @@ els = self.driver.find_elements_by_android_uiautomator('new UiSelector().clickab
 self.assertIsInstance(els, list)
 ```
 
+### Finding elements by Android viewtag search
+
+This method allows finding elements using [View#tags](https://developer.android.com/reference/android/view/View#tags).
+This method works with [Espresso Driver](https://github.com/appium/appium-espresso-driver).
+
+Adds the methods `driver.find_element_by_android_viewtag` and `driver.find_elements_by_android_viewtag`.
+
+```python
+el = self.driver.find_element_by_android_viewtag('a tag name')
+self.assertIsNotNone(el)
+```
+
+```python
+els = self.driver.find_elements_by_android_viewtag('a tag name')
+self.assertIsInstance(els, list)
+```
 
 ### Finding elements by iOS predicates
 
@@ -255,7 +365,7 @@ self.assertIsNotNone(el)
 
 ### Multi-touch actions
 
-In addition to chains of actions performed with in a single gesture, it is also possible to perform multiple chains at the same time, to simulate multi-finger actions. This is done through building a `MultiAction` object that comprises a number of individual `TouchAction` objects, one for each "finger".
+In addition to chains of actions performed within a single gesture, it is also possible to perform multiple chains at the same time, to simulate multi-finger actions. This is done through building a `MultiAction` object that comprises a number of individual `TouchAction` objects, one for each "finger".
 
 Given two lists next to each other, we can scroll them independently but simultaneously:
 
